@@ -41,6 +41,25 @@ app.get('/unshorten-detail', async (req, res) => {
   }
 });
 
+// 🔍 ค้นหาสินค้าด้วยคำค้นภาษาไทย (หรืออังกฤษ)
+app.get('/search', async (req, res) => {
+  const { q, page = 1, lang = 'th', page_size = 40 } = req.query;
+  if (!q) return res.status(400).json({ success: false, error: 'Missing keyword (q)' });
+
+  try {
+    const endpoint = `https://api.openchinaapi.com/v1/taobao/products?q=${encodeURIComponent(q)}&page=${page}&lang=${lang}&page_size=${page_size}`;
+    const response = await axios.get(endpoint, {
+      headers: {
+        Authorization: 'Token ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0'
+      }
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error('❌ Proxy Search Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Proxy server running on port ${PORT}`);
 });
