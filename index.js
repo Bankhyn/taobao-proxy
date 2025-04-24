@@ -1,9 +1,12 @@
-// 📁 index.js (Node.js Proxy Server for Taobao Unshorten via WhaleKub)
-
 const express = require('express');
 const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ✅ เพิ่ม route "/" สำหรับตรวจสอบสถานะ
+app.get('/', (req, res) => {
+  res.send('🟢 Taobao Unshortener Proxy is live!');
+});
 
 app.get('/unshorten', async (req, res) => {
   const { url } = req.query;
@@ -13,7 +16,7 @@ app.get('/unshorten', async (req, res) => {
   try {
     const response = await axios.get(`https://openchinaapi.whalekub.com/unshorten?url=${encodeURIComponent(url)}`, {
       headers: {
-        Authorization: `Token ${process.env.WHALEKUB_TOKEN}`
+        Authorization: 'Token ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0'
       }
     });
 
