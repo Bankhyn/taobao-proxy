@@ -32,14 +32,19 @@ app.get('/unshorten', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Proxy server running on port ${PORT}`);
 });
-// 📦 API: ดึงข้อมูลสินค้าจากลิงก์เต็ม
-app.get('/unshorten-detail', async (req, res) => {
-  const { url } = req.query;
 
-  if (!url) return res.status(400).json({ success: false, error: 'Missing URL' });
+app.get('/fetch-detail', async (req, res) => {
+  const { id, platform } = req.query;
+
+  if (!id || !platform) {
+    return res.status(400).json({ success: false, error: 'Missing id or platform' });
+  }
+
+  const version = platform === '1688' ? 'v3' : 'v1';
+  const endpoint = `https://api.openchinaapi.com/${version}/${platform}/products/${id}`;
 
   try {
-    const response = await axios.get(`https://api.openchinaapi.com/v3/advance/products/?url=${encodeURIComponent(url)}`, {
+    const response = await axios.get(endpoint, {
       headers: {
         Authorization: 'Token ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0'
       }
@@ -47,7 +52,7 @@ app.get('/unshorten-detail', async (req, res) => {
 
     res.json(response.data);
   } catch (err) {
-    console.error('❌ Proxy Detail Error:', err.message);
+    console.error('❌ Proxy /fetch-detail Error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
