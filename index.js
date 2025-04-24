@@ -11,7 +11,8 @@ app.get('/unshorten', async (req, res) => {
   if (!url) return res.status(400).json({ success: false, error: 'Missing URL' });
 
   try {
-    const response = await axios.get(`https://openchinaapi.whalekub.com/unshorten?url=${encodeURIComponent(url)}`, {
+    const response = await axios.get(`https://api.openchinaapi.com/v1/tools/unshorten?url=${encodeURIComponent(url)}`, {
+
       headers: {
         Authorization: 'Token ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0'
       }
