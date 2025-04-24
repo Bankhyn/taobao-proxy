@@ -1,9 +1,10 @@
+// ✅ index.js (แก้ไขใหม่ให้ใช้ openchinaapi.com ตรง)
+
 const express = require('express');
 const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ เพิ่ม route "/" สำหรับตรวจสอบสถานะ
 app.get('/', (req, res) => {
   res.send('🟢 Taobao Unshortener Proxy is live!');
 });
@@ -14,7 +15,8 @@ app.get('/unshorten', async (req, res) => {
   if (!url) return res.status(400).json({ success: false, error: 'Missing URL' });
 
   try {
-    const response = await axios.get(`https://openchinaapi.whalekub.com/unshorten?url=${encodeURIComponent(url)}`, {
+    const apiUrl = `https://api.openchinaapi.com/v3/advance/products/?url=${encodeURIComponent(url)}`;
+    const response = await axios.get(apiUrl, {
       headers: {
         Authorization: 'Token ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0'
       }
