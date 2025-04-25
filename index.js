@@ -1,114 +1,68 @@
+// index.js
 const express = require('express');
-const axios = require('axios');  // เพิ่มบรรทัดนี้
-const cors = require('cors');  // ใช้งาน CORS
-const app = express();
-const port = process.env.PORT || 3000;
+const axios   = require('axios');
+const cors    = require('cors');
+const app     = express();
+const port    = process.env.PORT || 3000;
 
-const API_TOKEN = 'ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0';  // API Token
-const headers = { Authorization: `Token ${API_TOKEN}` };  // เพิ่ม headers ที่ใช้งาน
+// ใส่ API_TOKEN ของคุณตรงนี้
+const API_TOKEN = 'ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0';
+const headers   = { Authorization: `Token ${API_TOKEN}` };
 
-// ใช้งาน CORS
-app.use(cors());
+app.use(cors());  // เปิด CORS ให้ Wix ดึงได้
 
-app.get('/', (req, res) => {
-  res.send('🟢 Taobao Proxy API is running...');
-});
+// Health-check
+app.get('/', (req, res) => res.send('🟢 Taobao Proxy API is running...'));
 
-// 1. SEARCH BY KEYWORD (Thai + Params)
-app.get('/search/keyword', async (req, res) => {
-  try {
-    const { q = 'กระเป๋า', page = 1, page_size = 20, start_price, end_price, sort = 'desc' } = req.query;
-    let url = `https://api.openchinaapi.com/v1/taobao/products?q=${encodeURIComponent(q)}&page=${page}&page_size=${page_size}&lang=th&sort=${sort}`;
-    if (start_price) url += `&start_price=${start_price}`;
-    if (end_price) url += `&end_price=${end_price}`;
-    const response = await axios.get(url, { headers });  // ใช้ headers
-    res.json(response.data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 2. SEARCH BY IMAGE (Thai)
-app.get('/search/image', async (req, res) => {
-  try {
-    const imgcode = 'http://g-search3.alicdn.com/img/bao/uploaded/i4/01CN01DpcD8IzHpbsH1gYJtJf2200811456689.jpg';
-    const url = `https://api.openchinaapi.com/v1/taobao/search_img_vip?imgcode=${encodeURIComponent(imgcode)}&page=1&lang=th&page_size=20`;
-    const response = await axios.get(url, { headers });  // ใช้ headers
-    res.json(response.data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 3. PRODUCT DETAIL (Thai)
-app.get('/product/:id', async (req, res) => {
-  try {
-    const itemId = req.params.id;
-    const url = `https://api.openchinaapi.com/v1/taobao/products/${itemId}?lang=th`;
-    const response = await axios.get(url, { headers });  // ใช้ headers
-    res.json(response.data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 3.1. DECODE FROM FULL URL (Taobao or 1688)
+// Decode + Detail + Resize ภาพ
 app.get('/decode/full', async (req, res) => {
   try {
     const link = req.query.url;
+    // หา item ID จาก url.taobao.com หรือ detail.1688.com/offer/...
     const match = link.match(/id=(\d{6,})|offer\/(\d{6,})/);
-    const itemId = match ? match[1] || match[2] : null;
-    if (!itemId) return res.status(400).json({ error: 'ไม่พบ item ID จากลิงก์นี้' });
+    const itemId = match ? (match[1]||match[2]) : null;
+    if (!itemId) {
+      return res.status(400).json({ success:false, message:'ไม่พบ item ID' });
+    }
 
-    const is1688 = link.includes('1688.com');
+    // เลือกใช้ API taobao หรือ 1688
+    const is1688  = link.includes('1688.com');
     const apiType = is1688 ? '1688' : 'taobao';
     const detailUrl = `https://api.openchinaapi.com/v1/${apiType}/products/${itemId}?lang=th`;
-    const detailRes = await axios.get(detailUrl, { headers });  // ใช้ headers
-    res.json(detailRes.data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    // ขอข้อมูล detail มาดื้อ ๆ
+    const detailRes = await axios.get(detailUrl, { headers });
+    const raw = detailRes.data?.data;
+    if (!raw) return res.status(404).json({ success:false, message:'ไม่พบข้อมูลสินค้า' });
+
+    // ดึงชื่อ ราคา
+    const title = raw.title;
+    const price = raw.min_price || raw.price || raw.original_price || '-';
+
+    // เตรียมรูปหลัก (600×600)
+    let picUrl = raw.pic_url || raw.image || '';
+    if (picUrl.startsWith('//')) picUrl = 'https:' + picUrl;
+    // ถอดพารามิเตอร์เก่าออก แล้วเติม _600x600.jpg ต่อท้าย
+    picUrl = picUrl.split('.jpg')[0] + '_600x600.jpg';
+
+    // เตรียม thumbnail 3 รูป (300×300)
+    const thumbs = (raw.item_imgs||[]).slice(0,3).map(i=>{
+      let u = i.url;
+      if (u.startsWith('//')) u = 'https:' + u;
+      return u.split('.jpg')[0] + '_300x300.jpg';
+    });
+
+    // ส่งกลับเฉพาะฟิลด์ที่จำเป็น
+    res.json({
+      success: true,
+      code: detailRes.data.code,
+      data: { title, price, pic_url: picUrl, thumbs }
+    });
+  }
+  catch(err) {
+    console.error(err);
+    res.status(500).json({ success:false, message: err.message });
   }
 });
 
-// 4. DECODE SHORT LINK - Taobao
-app.get('/decode/taobao', async (req, res) => {
-  try {
-    const link = req.query.url;
-    const url = `https://api.openchinaapi.com/v1/taobao/item_urlencode?word=${encodeURIComponent(link)}&title=no`;
-    const decodeRes = await axios.get(url, { headers });  // ใช้ headers
-    const itemId = decodeRes.data?.data?.num_iid;
-    if (itemId) {
-      const detailUrl = `https://api.openchinaapi.com/v1/taobao/products/${itemId}?lang=th`;
-      const detailRes = await axios.get(detailUrl, { headers });  // ใช้ headers
-      res.json(detailRes.data);
-    } else {
-      res.status(404).json({ error: 'ไม่สามารถแปลงลิงก์ Taobao ได้' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 5. DECODE SHORT LINK - 1688
-app.get('/decode/1688', async (req, res) => {
-  try {
-    const link = req.query.url;
-    const url = `https://api.openchinaapi.com/v1/1688/item_urlencode?word=${encodeURIComponent(link)}&title=no`;
-    const decodeRes = await axios.get(url, { headers });  // ใช้ headers
-    const itemId = decodeRes.data?.data?.num_iid;
-    if (itemId) {
-      const detailUrl = `https://api.openchinaapi.com/v1/1688/products/${itemId}?lang=th`;
-      const detailRes = await axios.get(detailUrl, { headers });  // ใช้ headers
-      res.json(detailRes.data);
-    } else {
-      res.status(404).json({ error: 'ไม่สามารถแปลงลิงก์ 1688 ได้' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Start Server
-app.listen(port, () => {
-  console.log(`✅ Server running at http://localhost:${port}`);
-});
+app.listen(port, ()=>console.log(`✅ Server running on port ${port}`));
