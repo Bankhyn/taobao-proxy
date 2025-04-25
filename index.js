@@ -1,17 +1,21 @@
 // index_th.js - Express API for OpenChinaAPI (Thai Language + Short Link Decoder)
 
 const express = require('express');
-const axios = require('axios');
+const cors = require('cors');  // เพิ่มบรรทัดนี้
 const app = express();
 const port = process.env.PORT || 3000;
 
-const API_TOKEN = 'ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0';
-const headers = { Authorization: `Token ${API_TOKEN}` };
+// ใช้งาน CORS
+app.use(cors());
 
-// Root for health check
 app.get('/', (req, res) => {
-  res.send('🟢 Taobao Proxy API (TH) is running...');
+  res.send('🟢 Taobao Proxy API is running...');
 });
+
+app.listen(port, () => {
+  console.log(`✅ Server running at http://localhost:${port}`);
+});
+
 
 // 1. SEARCH BY KEYWORD (Thai + Params)
 app.get('/search/keyword', async (req, res) => {
