@@ -1,9 +1,11 @@
-// index_th.js - Express API for OpenChinaAPI (Thai Language + Short Link Decoder)
-
 const express = require('express');
-const cors = require('cors');  // เพิ่มบรรทัดนี้
+const axios = require('axios');  // เพิ่มบรรทัดนี้
+const cors = require('cors');  // ใช้งาน CORS
 const app = express();
 const port = process.env.PORT || 3000;
+
+const API_TOKEN = 'ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0';  // API Token
+const headers = { Authorization: `Token ${API_TOKEN}` };  // เพิ่ม headers ที่ใช้งาน
 
 // ใช้งาน CORS
 app.use(cors());
@@ -12,11 +14,6 @@ app.get('/', (req, res) => {
   res.send('🟢 Taobao Proxy API is running...');
 });
 
-app.listen(port, () => {
-  console.log(`✅ Server running at http://localhost:${port}`);
-});
-
-
 // 1. SEARCH BY KEYWORD (Thai + Params)
 app.get('/search/keyword', async (req, res) => {
   try {
@@ -24,7 +21,7 @@ app.get('/search/keyword', async (req, res) => {
     let url = `https://api.openchinaapi.com/v1/taobao/products?q=${encodeURIComponent(q)}&page=${page}&page_size=${page_size}&lang=th&sort=${sort}`;
     if (start_price) url += `&start_price=${start_price}`;
     if (end_price) url += `&end_price=${end_price}`;
-    const response = await axios.get(url, { headers });
+    const response = await axios.get(url, { headers });  // ใช้ headers
     res.json(response.data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -36,7 +33,7 @@ app.get('/search/image', async (req, res) => {
   try {
     const imgcode = 'http://g-search3.alicdn.com/img/bao/uploaded/i4/01CN01DpcD8IzHpbsH1gYJtJf2200811456689.jpg';
     const url = `https://api.openchinaapi.com/v1/taobao/search_img_vip?imgcode=${encodeURIComponent(imgcode)}&page=1&lang=th&page_size=20`;
-    const response = await axios.get(url, { headers });
+    const response = await axios.get(url, { headers });  // ใช้ headers
     res.json(response.data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -48,7 +45,7 @@ app.get('/product/:id', async (req, res) => {
   try {
     const itemId = req.params.id;
     const url = `https://api.openchinaapi.com/v1/taobao/products/${itemId}?lang=th`;
-    const response = await axios.get(url, { headers });
+    const response = await axios.get(url, { headers });  // ใช้ headers
     res.json(response.data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -66,7 +63,7 @@ app.get('/decode/full', async (req, res) => {
     const is1688 = link.includes('1688.com');
     const apiType = is1688 ? '1688' : 'taobao';
     const detailUrl = `https://api.openchinaapi.com/v1/${apiType}/products/${itemId}?lang=th`;
-    const detailRes = await axios.get(detailUrl, { headers });
+    const detailRes = await axios.get(detailUrl, { headers });  // ใช้ headers
     res.json(detailRes.data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -78,11 +75,11 @@ app.get('/decode/taobao', async (req, res) => {
   try {
     const link = req.query.url;
     const url = `https://api.openchinaapi.com/v1/taobao/item_urlencode?word=${encodeURIComponent(link)}&title=no`;
-    const decodeRes = await axios.get(url, { headers });
+    const decodeRes = await axios.get(url, { headers });  // ใช้ headers
     const itemId = decodeRes.data?.data?.num_iid;
     if (itemId) {
       const detailUrl = `https://api.openchinaapi.com/v1/taobao/products/${itemId}?lang=th`;
-      const detailRes = await axios.get(detailUrl, { headers });
+      const detailRes = await axios.get(detailUrl, { headers });  // ใช้ headers
       res.json(detailRes.data);
     } else {
       res.status(404).json({ error: 'ไม่สามารถแปลงลิงก์ Taobao ได้' });
@@ -97,11 +94,11 @@ app.get('/decode/1688', async (req, res) => {
   try {
     const link = req.query.url;
     const url = `https://api.openchinaapi.com/v1/1688/item_urlencode?word=${encodeURIComponent(link)}&title=no`;
-    const decodeRes = await axios.get(url, { headers });
+    const decodeRes = await axios.get(url, { headers });  // ใช้ headers
     const itemId = decodeRes.data?.data?.num_iid;
     if (itemId) {
       const detailUrl = `https://api.openchinaapi.com/v1/1688/products/${itemId}?lang=th`;
-      const detailRes = await axios.get(detailUrl, { headers });
+      const detailRes = await axios.get(detailUrl, { headers });  // ใช้ headers
       res.json(detailRes.data);
     } else {
       res.status(404).json({ error: 'ไม่สามารถแปลงลิงก์ 1688 ได้' });
