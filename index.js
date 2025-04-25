@@ -1,65 +1,63 @@
-// 📁 index.js (Node.js Proxy Server for Taobao Unshorten via WhaleKub)
+// index_th.js - API Calls for OpenChinaAPI with Thai Language + Short Link Decoder
 
-const express = require('express');
 const axios = require('axios');
-const app = express();
-const PORT = process.env.PORT || 3000;
 
-// 🔓 ปลดลิงก์ย่อ
-app.get('/unshorten', async (req, res) => {
-  const { url } = req.query;
-  if (!url) return res.status(400).json({ success: false, error: 'Missing URL' });
+const API_TOKEN = 'ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0';
+const headers = { Authorization: `Token ${API_TOKEN}` };
 
-  try {
-    const response = await axios.get(`https://openchinaapi.whalekub.com/unshorten?url=${encodeURIComponent(url)}`, {
-      headers: {
-        Authorization: 'Token ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0'
-      }
-    });
-    res.json(response.data);
-  } catch (err) {
-    console.error('❌ Proxy Error:', err.message);
-    res.status(500).json({ success: false, error: err.message });
+// 1. SEARCH BY KEYWORD (Thai)
+async function searchByKeywordTH() {
+  const url = 'https://api.openchinaapi.com/v1/taobao/products?q=กระเป๋า&page=1&page_size=20&lang=th';
+  const res = await axios.get(url, { headers });
+  console.log('🔍 Search Keyword (TH):', res.data);
+}
+
+// 2. SEARCH BY IMAGE (Thai)
+async function searchByImageTH() {
+  const imgcode = 'http://g-search3.alicdn.com/img/bao/uploaded/i4/01CN01DpcD8IzHpbsH1gYJtJf2200811456689.jpg';
+  const url = `https://api.openchinaapi.com/v1/taobao/search_img_vip?imgcode=${encodeURIComponent(imgcode)}&page=1&lang=th&page_size=20`;
+  const res = await axios.get(url, { headers });
+  console.log('🖼️ Search by Image (TH):', res.data);
+}
+
+// 3. PRODUCT DETAIL (Thai)
+async function getProductDetailTH(itemId) {
+  const url = `https://api.openchinaapi.com/v1/taobao/products/${itemId}?lang=th`;
+  const res = await axios.get(url, { headers });
+  console.log('📦 Product Detail (TH):', res.data);
+}
+
+// 4. ENCODE SHORT URL (TAOBAO)
+async function decodeTaobaoShortLink(link) {
+  const url = `https://api.openchinaapi.com/v1/taobao/item_urlencode?word=${encodeURIComponent(link)}&title=no`;
+  const res = await axios.get(url, { headers });
+  const itemId = res.data?.data?.num_iid;
+  if (itemId) {
+    await getProductDetailTH(itemId);
+  } else {
+    console.log('❌ Failed to decode Taobao link:', link);
   }
-});
+}
 
-// 🧾 ดึงข้อมูลสินค้าแบบละเอียดจาก URL
-app.get('/unshorten-detail', async (req, res) => {
-  const { url } = req.query;
-  if (!url) return res.status(400).json({ success: false, error: 'Missing URL' });
-
-  try {
-    const response = await axios.get(`https://api.openchinaapi.com/v3/advance/products?url=${encodeURIComponent(url)}`, {
-      headers: {
-        Authorization: 'Token ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0'
-      }
-    });
-    res.json(response.data);
-  } catch (err) {
-    console.error('❌ Proxy Detail Error:', err.message);
-    res.status(500).json({ success: false, error: err.message });
+// 5. ENCODE SHORT URL (1688)
+async function decode1688ShortLink(link) {
+  const url = `https://api.openchinaapi.com/v1/1688/item_urlencode?word=${encodeURIComponent(link)}&title=no`;
+  const res = await axios.get(url, { headers });
+  const itemId = res.data?.data?.num_iid;
+  if (itemId) {
+    const detailUrl = `https://api.openchinaapi.com/v1/1688/products/${itemId}?lang=th`;
+    const detailRes = await axios.get(detailUrl, { headers });
+    console.log('📦 1688 Product Detail (TH):', detailRes.data);
+  } else {
+    console.log('❌ Failed to decode 1688 link:', link);
   }
-});
+}
 
-// 🔍 ค้นหาสินค้าด้วยคำค้นภาษาไทย (หรืออังกฤษ)
-app.get('/search', async (req, res) => {
-  const { q, page = 1, lang = 'th', page_size = 40 } = req.query;
-  if (!q) return res.status(400).json({ success: false, error: 'Missing keyword (q)' });
-
-  try {
-    const endpoint = `https://api.openchinaapi.com/v1/taobao/products?q=${encodeURIComponent(q)}&page=${page}&lang=${lang}&page_size=${page_size}`;
-    const response = await axios.get(endpoint, {
-      headers: {
-        Authorization: 'Token ec3bdc1e65e7a2cb9a8248dd0e0c17fe7fd660d0'
-      }
-    });
-    res.json(response.data);
-  } catch (err) {
-    console.error('❌ Proxy Search Error:', err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 Proxy server running on port ${PORT}`);
-});
+// 🔁 TEST ALL THAI-COMPATIBLE ENDPOINTS
+(async () => {
+  await searchByKeywordTH();
+  await searchByImageTH();
+  await getProductDetailTH('605870333484'); // Replace with actual item ID
+  await decodeTaobaoShortLink('https://m.tb.cn/h.5kK1bcJ9');
+  await decode1688ShortLink('https://a.1688.com/p/8fijK9p4.html');
+})();
