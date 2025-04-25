@@ -13,10 +13,13 @@ app.get('/', (req, res) => {
   res.send('🟢 Taobao Proxy API (TH) is running...');
 });
 
-// 1. SEARCH BY KEYWORD (Thai)
+// 1. SEARCH BY KEYWORD (Thai + Params)
 app.get('/search/keyword', async (req, res) => {
   try {
-    const url = 'https://api.openchinaapi.com/v1/taobao/products?q=กระเป๋า&page=1&page_size=20&lang=th';
+    const { q = 'กระเป๋า', page = 1, page_size = 20, start_price, end_price, sort = 'desc' } = req.query;
+    let url = `https://api.openchinaapi.com/v1/taobao/products?q=${encodeURIComponent(q)}&page=${page}&page_size=${page_size}&lang=th&sort=${sort}`;
+    if (start_price) url += `&start_price=${start_price}`;
+    if (end_price) url += `&end_price=${end_price}`;
     const response = await axios.get(url, { headers });
     res.json(response.data);
   } catch (err) {
@@ -43,6 +46,24 @@ app.get('/product/:id', async (req, res) => {
     const url = `https://api.openchinaapi.com/v1/taobao/products/${itemId}?lang=th`;
     const response = await axios.get(url, { headers });
     res.json(response.data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3.1. DECODE FROM FULL URL (Taobao or 1688)
+app.get('/decode/full', async (req, res) => {
+  try {
+    const link = req.query.url;
+    const match = link.match(/id=(\d{6,})|offer\/(\d{6,})/);
+    const itemId = match ? match[1] || match[2] : null;
+    if (!itemId) return res.status(400).json({ error: 'ไม่พบ item ID จากลิงก์นี้' });
+
+    const is1688 = link.includes('1688.com');
+    const apiType = is1688 ? '1688' : 'taobao';
+    const detailUrl = `https://api.openchinaapi.com/v1/${apiType}/products/${itemId}?lang=th`;
+    const detailRes = await axios.get(detailUrl, { headers });
+    res.json(detailRes.data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
